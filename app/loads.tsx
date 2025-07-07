@@ -3,7 +3,7 @@ import { View, Text, FlatList, StyleSheet, ActivityIndicator } from "react-nativ
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 
-const API_URL = "http://10.0.0.29:5000"; // заменишь на свой
+const API_URL = "http://192.168.0.229:5000"; // заменишь на свой
 
 export default function LoadsScreen() {
   const [loads, setLoads] = useState<any[]>([]);
