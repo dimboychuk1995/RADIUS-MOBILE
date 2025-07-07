@@ -18,7 +18,7 @@ export default function LoginScreen() {
 
       router.replace("/dashboard");
     } else {
-      Alert.alert("Ошибка входа", result.message || "Неверные данные");
+      Alert.alert("Ошибка входа", result.message || "Неверные дjные");
     }
   }
 
