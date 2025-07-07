@@ -3,7 +3,7 @@ import { View, Text, FlatList, StyleSheet, ActivityIndicator } from "react-nativ
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import { getUser } from "@/lib/auth";
-
+import { Pressable } from "react-native"; // вверху файла
 import { API_URL } from "@/lib/config"; // заменишь на свой
 
 
@@ -55,14 +55,23 @@ export default function LoadsScreen() {
   }, []);
 
   const renderItem = ({ item }: any) => (
-    <View style={styles.card}>
-      <Text style={styles.title}>Load #{item.load_id}</Text>
-      <Text style={styles.text}>📦 Pickup: {item.pickup_address}</Text>
-      <Text style={styles.text}>📅 {formatDate(item.pickup_date)}</Text>
-      <Text style={styles.text}>🏁 Delivery: {item.delivery_address}</Text>
-      <Text style={styles.text}>📅 {formatDate(item.delivery_date)}</Text>
-      <Text style={styles.text}>💲 ${item.price} | RPM: {item.RPM}</Text>
-    </View>
+    <Pressable
+      onPress={() =>
+        router.push({
+          pathname: "/load-details/[load_id]",
+          params: { load_id: item.load_id },
+        })
+      }
+    >
+      <View style={styles.card}>
+        <Text style={styles.title}>Load #{item.load_id}</Text>
+        <Text style={styles.text}>📦 Pickup: {item.pickup_address}</Text>
+        <Text style={styles.text}>📅 {formatDate(item.pickup_date)}</Text>
+        <Text style={styles.text}>🏁 Delivery: {item.delivery_address}</Text>
+        <Text style={styles.text}>📅 {formatDate(item.delivery_date)}</Text>
+        <Text style={styles.text}>💲 ${item.price} | RPM: {item.RPM}</Text>
+      </View>
+    </Pressable>
   );
 
   const formatDate = (dateString: string) => {
