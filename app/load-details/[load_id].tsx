@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Button,
   Alert,
+  Image,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { API_URL } from "@/lib/config";
@@ -89,7 +90,7 @@ export default function LoadDetailsScreen() {
       const data = await res.json();
       if (data.success) {
         Alert.alert("Успех", "Фото успешно загружены");
-        fetchDetails(); // обновить статус
+        fetchDetails(); // обновить статус и фотографии
       } else {
         Alert.alert("Ошибка", data.error || "Ошибка загрузки");
       }
@@ -99,6 +100,24 @@ export default function LoadDetailsScreen() {
     } finally {
       setUploading(false);
     }
+  };
+
+  const renderPhotoBlock = (title: string, urls: string[]) => {
+    if (!urls || urls.length === 0) return null;
+    return (
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>{title}</Text>
+        <ScrollView horizontal>
+          {urls.map((url, idx) => (
+            <Image
+              key={idx}
+              source={{ uri: API_URL + url }}
+              style={styles.photo}
+            />
+          ))}
+        </ScrollView>
+      </View>
+    );
   };
 
   if (loading) return <ActivityIndicator style={{ marginTop: 50 }} size="large" color="#000" />;
@@ -120,14 +139,16 @@ export default function LoadDetailsScreen() {
       {renderLocation("Delivery", load.delivery)}
       {load.extra_delivery?.map((d: any, idx: number) => renderLocation(`Extra Delivery ${idx + 1}`, d))}
 
+      {renderPhotoBlock("📸 Фото с пикапа", load.pickup_photo_urls)}
+      {renderPhotoBlock("📸 Фото на деливери", load.delivery_photo_urls)}
+
       {/* Кнопки загрузки */}
-      {load.status?.toLowerCase() === "new" && (
+      {load.status === "new" && (
         <View style={styles.uploadBtn}>
           <Button title={uploading ? "Загрузка..." : "📤 Добавить фото с пикапа"} onPress={() => pickAndUploadPhotos("pickup")} disabled={uploading} />
         </View>
       )}
-
-      {load.status?.toLowerCase() === "picked_up" && (
+      {load.status === "picked_up" && (
         <View style={styles.uploadBtn}>
           <Button title={uploading ? "Загрузка..." : "📤 Добавить фото на деливери"} onPress={() => pickAndUploadPhotos("delivery")} disabled={uploading} />
         </View>
@@ -169,5 +190,13 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 10,
     elevation: 2,
+  },
+  photo: {
+    width: 120,
+    height: 120,
+    marginRight: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#ccc",
   },
 });
