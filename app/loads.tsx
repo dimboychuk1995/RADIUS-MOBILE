@@ -4,7 +4,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import { getUser } from "@/lib/auth";
 
-const API_URL = "http://192.168.0.229:5000"; // заменишь на свой
+import { API_URL } from "@/lib/config"; // заменишь на свой
 
 
 export default function LoadsScreen() {
@@ -32,7 +32,7 @@ export default function LoadsScreen() {
       }
 
       const res = await fetch(`${API_URL}/api/loads?${params.toString()}`);
-      
+
       const data = await res.json();
 
       if (data.success) {
