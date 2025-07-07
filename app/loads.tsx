@@ -2,8 +2,10 @@ import { useEffect, useState } from "react";
 import { View, Text, FlatList, StyleSheet, ActivityIndicator } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
+import { getUser } from "@/lib/auth";
 
 const API_URL = "http://192.168.0.229:5000"; // заменишь на свой
+
 
 export default function LoadsScreen() {
   const [loads, setLoads] = useState<any[]>([]);
@@ -14,8 +16,12 @@ export default function LoadsScreen() {
   const fetchLoads = async (pageToLoad: number) => {
     try {
       setLoading(true);
-      const role = await AsyncStorage.getItem("user_role");
-      const user_id = await AsyncStorage.getItem("user_id");
+
+      const user = await getUser();
+      const role = user?.role;
+      const user_id = user?.user_id;
+
+      console.log("[FETCH PARAMS]", { page: pageToLoad, role, user_id });
 
       const params = new URLSearchParams({ page: pageToLoad.toString() });
       if (role === "driver") {
@@ -26,11 +32,12 @@ export default function LoadsScreen() {
       }
 
       const res = await fetch(`${API_URL}/api/loads?${params.toString()}`);
+      
       const data = await res.json();
 
       if (data.success) {
         setLoads((prev) => [...prev, ...data.loads]);
-        setHasMore(data.loads.length === 10); // если пришло меньше 10 — конец
+        setHasMore(data.loads.length === 10);
         setPage((prev) => prev + 1);
       } else {
         console.warn("Ошибка загрузки:", data.error);
@@ -41,6 +48,7 @@ export default function LoadsScreen() {
       setLoading(false);
     }
   };
+
 
   useEffect(() => {
     fetchLoads(1);
