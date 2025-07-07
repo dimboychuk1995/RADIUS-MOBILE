@@ -1,8 +1,10 @@
+// app/login.tsx
+
 import { useState } from "react";
 import { View, Text, TextInput, Button, StyleSheet, Alert } from "react-native";
 import { router } from "expo-router";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { login } from "@/utils/api";
+import { setUser } from "@/lib/auth";
 
 export default function LoginScreen() {
   const [username, setUsername] = useState("");
@@ -12,20 +14,21 @@ export default function LoginScreen() {
     const result = await login(username, password);
 
     if (result.success) {
-      // 💾 сохраняем user_id и роль
-      await AsyncStorage.setItem("user_id", result.user_id);
-      await AsyncStorage.setItem("user_role", result.role);
-
+      await setUser({
+        user_id: result.user_id,
+        role: result.role,
+        username: result.username,
+        company: result.company,
+      });
       router.replace("/dashboard");
     } else {
-      Alert.alert("Ошибка входа", result.message || "Неверные дjные");
+      Alert.alert("Ошибка входа", result.message || "Неверные данные");
     }
   }
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Вход</Text>
-
       <TextInput
         style={styles.input}
         placeholder="Имя пользователя"
@@ -33,7 +36,6 @@ export default function LoginScreen() {
         autoCapitalize="none"
         onChangeText={setUsername}
       />
-
       <TextInput
         style={styles.input}
         placeholder="Пароль"
@@ -41,11 +43,11 @@ export default function LoginScreen() {
         secureTextEntry
         onChangeText={setPassword}
       />
-
       <Button title="Войти" onPress={handleLogin} />
     </View>
   );
 }
+
 
 const styles = StyleSheet.create({
   container: {

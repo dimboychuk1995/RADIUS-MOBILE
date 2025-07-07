@@ -1,15 +1,19 @@
-import { Stack, useRouter, usePathname } from "expo-router";
+import { Stack } from "expo-router";
 import { useState } from "react";
 import { Pressable, Text, View, StyleSheet, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import Modal from "react-native-modal";
+import { usePathname, useRouter } from "expo-router";
+import { useAuthGuard } from "@/lib/guard";
+import { clearUser } from "@/lib/auth";
 
 export default function RootLayout() {
   const router = useRouter();
   const pathname = usePathname();
+  const isAuthenticated = useAuthGuard();
 
   const [isModalVisible, setModalVisible] = useState(false);
-  const showSettingsIcon = pathname !== "/(auth)/login";
+  const showSettingsIcon = isAuthenticated && pathname !== "/settings";
 
   const toggleModal = () => setModalVisible(!isModalVisible);
 
@@ -18,11 +22,13 @@ export default function RootLayout() {
     router.push("/settings");
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setModalVisible(false);
-    // Здесь очистка токена/стейта и переход на логин:
-    router.replace("/(auth)/login");
+    await clearUser();
+    router.replace("/login");
   };
+
+  if (isAuthenticated === null) return null;
 
   return (
     <>
@@ -65,10 +71,7 @@ export default function RootLayout() {
 }
 
 const styles = StyleSheet.create({
-  modal: {
-    justifyContent: "flex-end",
-    margin: 0,
-  },
+  modal: { justifyContent: "flex-end", margin: 0 },
   sheet: {
     backgroundColor: "white",
     borderTopLeftRadius: 20,
