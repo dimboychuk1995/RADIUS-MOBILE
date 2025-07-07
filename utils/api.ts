@@ -1,4 +1,4 @@
-const API_URL = "http://192.168.0.229:5000";
+import { API_URL } from "@/lib/config";
 
 export async function login(username: string, password: string) {
   try {
