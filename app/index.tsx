@@ -1,16 +1,22 @@
-import { View, Text, Button, StyleSheet } from "react-native";
-import { router } from "expo-router";
+// app/index.tsx
+import { useRouter } from "expo-router";
+import { useEffect } from "react";
+import { View, Text } from "react-native";
 
-export default function Home() {
+export default function Index() {
+  const router = useRouter();
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      router.replace("/login");
+    }, 0);
+
+    return () => clearTimeout(timeout);
+  }, []);
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Вы не залогинены</Text>
-      <Button title="Перейти к логину" onPress={() => router.push("/login")} />
+    <View>
+      <Text>Redirecting...</Text>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: "center", alignItems: "center" },
-  title: { fontSize: 18, marginBottom: 20 },
-});

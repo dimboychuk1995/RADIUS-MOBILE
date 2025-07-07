@@ -1,37 +1,43 @@
 import { useState } from "react";
-import { View, Text, TextInput, Button, StyleSheet } from "react-native";
+import { View, Text, TextInput, Button, StyleSheet, Alert } from "react-native";
 import { router } from "expo-router";
+import { login } from "../utils/api";
 
 export default function LoginScreen() {
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
 
-  function handleLogin() {
-    // Заглушка: переход без проверки
-    router.push("/dashboard");
+  async function handleLogin() {
+    const result = await login(username, password);
+
+    if (result.success) {
+      router.replace("/dashboard");
+    } else {
+      Alert.alert("Ошибка входа", result.message || "Неверные данные");
+    }
   }
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Login</Text>
+      <Text style={styles.title}>Вход</Text>
 
       <TextInput
         style={styles.input}
-        placeholder="Email"
-        value={email}
+        placeholder="Имя пользователя"
+        value={username}
         autoCapitalize="none"
-        onChangeText={setEmail}
+        onChangeText={setUsername}
       />
 
       <TextInput
         style={styles.input}
-        placeholder="Password"
+        placeholder="Пароль"
         value={password}
         secureTextEntry
         onChangeText={setPassword}
       />
 
-      <Button title="Login" onPress={handleLogin} />
+      <Button title="Войти" onPress={handleLogin} />
     </View>
   );
 }
