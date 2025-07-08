@@ -7,20 +7,44 @@ import {
   ActivityIndicator,
   StyleSheet,
   SafeAreaView,
+  TextInput,
+  Button,
 } from "react-native";
 import { API_URL } from "@/lib/config";
 import { getToken } from "@/lib/auth";
+import { socket } from "@/lib/socket";
 
 export default function ChatRoomScreen() {
   const { room_id } = useLocalSearchParams();
   const [messages, setMessages] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [input, setInput] = useState("");
 
   useEffect(() => {
-    if (room_id) {
-      loadMessages(room_id as string);
-    }
-  }, [room_id]);
+    if (!room_id) return;
+
+    const setupSocket = async () => {
+        const token = await getToken();
+
+        await loadMessages(room_id); // 👈 ЗАГРУЖАЕМ СООБЩЕНИЯ ПЕРЕД ПОДКЛЮЧЕНИЕМ
+
+        socket.connect();
+        socket.emit("join", { room_id, token });
+
+        socket.on("new_message", (msg) => {
+        if (msg.room_id === room_id) {
+            setMessages((prev) => [...prev, msg]);
+        }
+        });
+    };
+
+    setupSocket();
+
+    return () => {
+        socket.off("new_message");
+        socket.disconnect();
+    };
+    }, [room_id]);
 
   const loadMessages = async (roomId: string) => {
     setLoading(true);
@@ -40,6 +64,17 @@ export default function ChatRoomScreen() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const sendMessage = () => {
+    if (!input.trim()) return;
+
+    socket.emit("send_message", {
+      room_id,
+      content: input.trim(),
+    });
+
+    setInput("");
   };
 
   const renderItem = ({ item }: { item: any }) => (
@@ -66,15 +101,26 @@ export default function ChatRoomScreen() {
           <ActivityIndicator size="large" color="#000" />
         </View>
       ) : (
-        <FlatList
-          data={messages}
-          keyExtractor={(item) => item._id}
-          renderItem={renderItem}
-          contentContainerStyle={{ padding: 12 }}
-          ListEmptyComponent={
-            <Text style={styles.empty}>Сообщений пока нет</Text>
-          }
-        />
+        <>
+          <FlatList
+            data={messages}
+            keyExtractor={(item) => item._id}
+            renderItem={renderItem}
+            contentContainerStyle={{ padding: 12 }}
+            ListEmptyComponent={
+              <Text style={styles.empty}>Сообщений пока нет</Text>
+            }
+          />
+          <View style={styles.inputContainer}>
+            <TextInput
+              style={styles.input}
+              value={input}
+              onChangeText={setInput}
+              placeholder="Введите сообщение"
+            />
+            <Button title="Отправить" onPress={sendMessage} />
+          </View>
+        </>
       )}
     </SafeAreaView>
   );
@@ -103,5 +149,19 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 40,
     color: "#888",
+  },
+  inputContainer: {
+    flexDirection: "row",
+    padding: 8,
+    borderTopWidth: 1,
+    borderColor: "#ccc",
+  },
+  input: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: "#aaa",
+    marginRight: 8,
+    paddingHorizontal: 8,
+    borderRadius: 4,
   },
 });
