@@ -29,7 +29,7 @@ export default function ChatRoomScreen() {
         await loadMessages(room_id); // 👈 ЗАГРУЖАЕМ СООБЩЕНИЯ ПЕРЕД ПОДКЛЮЧЕНИЕМ
 
         socket.connect();
-        socket.emit("join", { room_id, token });
+        socket.emit("mobile_join", { room_id, token });
 
         socket.on("new_message", (msg) => {
         if (msg.room_id === room_id) {
