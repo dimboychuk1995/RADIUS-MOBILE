@@ -1,11 +1,8 @@
 import { useEffect, useState } from "react";
-import { View, Text, FlatList, StyleSheet, ActivityIndicator } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { View, Text, FlatList, StyleSheet, ActivityIndicator, Pressable } from "react-native";
 import { router } from "expo-router";
-import { getUser } from "@/lib/auth";
-import { Pressable } from "react-native"; // вверху файла
-import { API_URL } from "@/lib/config"; // заменишь на свой
-
+import { getUser, getToken } from "@/lib/auth"; // ⬅️ добавили getToken
+import { API_URL } from "@/lib/config";
 
 export default function LoadsScreen() {
   const [loads, setLoads] = useState<any[]>([]);
@@ -17,21 +14,24 @@ export default function LoadsScreen() {
     try {
       setLoading(true);
 
+      const token = await getToken(); // ⬅️ достаем токен
       const user = await getUser();
       const role = user?.role;
-      const user_id = user?.user_id;
-
-      console.log("[FETCH PARAMS]", { page: pageToLoad, role, user_id });
 
       const params = new URLSearchParams({ page: pageToLoad.toString() });
       if (role === "driver") {
         params.append("role", "driver");
-        if (user_id) params.append("user_id", user_id);
       } else {
         params.append("role", "admin");
       }
 
-      const res = await fetch(`${API_URL}/api/loads?${params.toString()}`);
+      const res = await fetch(`${API_URL}/api/loads?${params.toString()}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`, // ⬅️ передаем токен
+        },
+      });
 
       const data = await res.json();
 
@@ -49,10 +49,15 @@ export default function LoadsScreen() {
     }
   };
 
-
   useEffect(() => {
     fetchLoads(1);
   }, []);
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return "—";
+    const date = new Date(dateString);
+    return date.toLocaleDateString();
+  };
 
   const renderItem = ({ item }: any) => (
     <Pressable
@@ -73,12 +78,6 @@ export default function LoadsScreen() {
       </View>
     </Pressable>
   );
-
-  const formatDate = (dateString: string) => {
-    if (!dateString) return "—";
-    const date = new Date(dateString);
-    return date.toLocaleDateString();
-  };
 
   return (
     <FlatList

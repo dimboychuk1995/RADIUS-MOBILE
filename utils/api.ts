@@ -1,5 +1,4 @@
 // app/api.ts
-
 import { API_URL } from "@/lib/config";
 
 export async function login(username: string, password: string) {
@@ -11,7 +10,6 @@ export async function login(username: string, password: string) {
     });
 
     const data = await res.json();
-
     return data;
   } catch (err) {
     console.error("Ошибка при логине:", err);

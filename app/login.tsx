@@ -19,6 +19,8 @@ export default function LoginScreen() {
         role: result.role,
         username: result.username,
         company: result.company,
+        token: result.token, // ⬅️ это обязательно
+        driver_id: result.driver_id || null, // на всякий случай
       });
       router.replace("/dashboard");
     } else {

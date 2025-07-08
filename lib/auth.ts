@@ -1,4 +1,3 @@
-// lib/auth.ts
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export async function getUser() {
@@ -12,4 +11,11 @@ export async function setUser(user: any) {
 
 export async function clearUser() {
   await AsyncStorage.removeItem("user");
+}
+
+// ✅ Добавляем получение JWT токена
+export async function getToken() {
+  const json = await AsyncStorage.getItem("user");
+  const user = json ? JSON.parse(json) : null;
+  return user?.token || null;
 }
