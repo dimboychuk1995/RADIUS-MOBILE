@@ -1,6 +1,8 @@
 // ChatRoomScreen.tsx
 import { useLocalSearchParams } from "expo-router";
 import { useEffect, useState, useRef } from "react";
+import * as DocumentPicker from "expo-document-picker";
+import * as FileSystem from "expo-file-system";
 import {
   View,
   Text,
@@ -13,6 +15,7 @@ import {
   TouchableOpacity,
   Keyboard,
   SafeAreaView,
+  Alert,
 } from "react-native";
 import { API_URL } from "@/lib/config";
 import { getToken, getUser } from "@/lib/auth";
@@ -25,6 +28,9 @@ export default function ChatRoomScreen() {
   const [input, setInput] = useState("");
   const [replyTo, setReplyTo] = useState<any>(null);
   const [user, setUser] = useState<any>(null);
+  const [messageIdToIndex, setMessageIdToIndex] = useState<{ [key: string]: number }>({});
+  const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
+  const scrollingToRef = useRef<string | null>(null);
   const flatListRef = useRef<FlatList>(null);
 
   useEffect(() => {
@@ -47,7 +53,14 @@ export default function ChatRoomScreen() {
 
       socket.on("new_message", (msg) => {
         if (msg.room_id === room_id) {
-          setMessages((prev) => [...prev, msg]);
+          setMessages((prev) => {
+            const newMessages = [...prev, msg];
+            setMessageIdToIndex((prevMap) => ({
+              ...prevMap,
+              [msg._id]: newMessages.length - 1,
+            }));
+            return newMessages;
+          });
           setTimeout(scrollToBottom, 100);
         }
       });
@@ -75,6 +88,11 @@ export default function ChatRoomScreen() {
       const data = await res.json();
       if (data.success) {
         setMessages(data.messages);
+        const mapping: { [key: string]: number } = {};
+        data.messages.forEach((msg: any, idx: number) => {
+          mapping[msg._id] = idx;
+        });
+        setMessageIdToIndex(mapping);
         setTimeout(scrollToBottom, 100);
       }
     } catch (err) {
@@ -86,6 +104,22 @@ export default function ChatRoomScreen() {
 
   const scrollToBottom = () => {
     flatListRef.current?.scrollToOffset({ offset: 999999, animated: true });
+  };
+
+  const scrollToMessageById = (id: string) => {
+    if (scrollingToRef.current === id) return;
+    const index = messageIdToIndex[id];
+    if (index !== undefined) {
+      scrollingToRef.current = id;
+      flatListRef.current?.scrollToIndex({ index, animated: true });
+      setHighlightedMessageId(id);
+      setTimeout(() => {
+        setHighlightedMessageId(null);
+        scrollingToRef.current = null;
+      }, 2000);
+    } else {
+      console.warn("🔍 Сообщение не найдено по ID:", id);
+    }
   };
 
   const sendMessage = async () => {
@@ -101,26 +135,64 @@ export default function ChatRoomScreen() {
     setReplyTo(null);
   };
 
+  const pickFile = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({ copyToCacheDirectory: true });
+      if (result.type === "success" && result.uri) {
+        const token = await getToken();
+        const formData = new FormData();
+        formData.append("file", {
+          uri: result.uri,
+          name: result.name,
+          type: result.mimeType || "application/octet-stream",
+        } as any);
+        formData.append("content", "");
+        if (replyTo) formData.append("reply_to", JSON.stringify(replyTo));
+
+        await fetch(`${API_URL}/api/mobile/chat/send/${room_id}`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: formData,
+        });
+
+        setReplyTo(null);
+      }
+    } catch (err) {
+      console.error("❌ Ошибка при выборе файла:", err);
+      Alert.alert("Ошибка", "Не удалось загрузить файл");
+    }
+  };
+
   const renderItem = ({ item }: { item: any }) => {
     const isOwn = item.sender_id === user?.user_id;
+    const isHighlighted = highlightedMessageId === item._id;
+
     return (
       <TouchableOpacity onLongPress={() => setReplyTo(item)} activeOpacity={0.7}>
         <View
-          style={[
-            styles.messageItem,
-            isOwn ? styles.ownMessage : styles.otherMessage,
-          ]}
+          style={[styles.messageItem, isOwn ? styles.ownMessage : styles.otherMessage, isHighlighted && styles.highlightedMessage]}
         >
-          {item.reply_to && (
+          {item.reply_to && item.reply_to.message_id && (
             <View style={styles.replyBox}>
-              <Text style={styles.replySender}>{item.reply_to.sender_name}</Text>
-              <Text style={styles.replySnippet} numberOfLines={1}>
-                {item.reply_to.content}
-              </Text>
+              <TouchableOpacity onPress={() => scrollToMessageById(item.reply_to.message_id)}>
+                <Text style={styles.replySender}>🔗 Ответ для: {item.reply_to.sender_name}</Text>
+              </TouchableOpacity>
+              <Text style={styles.replySnippet} numberOfLines={1}>{item.reply_to.content}</Text>
             </View>
           )}
           <Text style={styles.sender}>{item.sender_name}</Text>
           <Text>{item.content}</Text>
+          {item.files && item.files.length > 0 && (
+            <View style={{ marginTop: 6 }}>
+              {item.files.map((file: any, idx: number) => (
+                <Text key={idx} style={{ color: "#007bff", textDecorationLine: "underline" }}>
+                  📎 {file.file_name}
+                </Text>
+              ))}
+            </View>
+          )}
           <Text style={styles.timestamp}>{formatTime(item.timestamp)}</Text>
         </View>
       </TouchableOpacity>
@@ -169,6 +241,9 @@ export default function ChatRoomScreen() {
             )}
 
             <View style={styles.inputContainer}>
+              <TouchableOpacity onPress={pickFile} style={{ marginRight: 8 }}>
+                <Text style={{ fontSize: 24 }}>📎</Text>
+              </TouchableOpacity>
               <TextInput
                 style={styles.input}
                 value={input}
@@ -203,6 +278,11 @@ const styles = StyleSheet.create({
   otherMessage: {
     backgroundColor: "#f2f2f2",
     alignSelf: "flex-start",
+  },
+  highlightedMessage: {
+    backgroundColor: "#fff7c2",
+    borderWidth: 1,
+    borderColor: "#ffd700",
   },
   sender: { fontWeight: "bold", marginBottom: 4 },
   timestamp: {
