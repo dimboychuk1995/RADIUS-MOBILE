@@ -1,5 +1,4 @@
 // ChatRoomScreen.tsx
-
 import { useLocalSearchParams } from "expo-router";
 import { useEffect, useState, useRef } from "react";
 import {
@@ -16,7 +15,7 @@ import {
   SafeAreaView,
 } from "react-native";
 import { API_URL } from "@/lib/config";
-import { getToken } from "@/lib/auth";
+import { getToken, getUser } from "@/lib/auth";
 import { socket } from "@/lib/socket";
 
 export default function ChatRoomScreen() {
@@ -24,17 +23,23 @@ export default function ChatRoomScreen() {
   const [messages, setMessages] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [input, setInput] = useState("");
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [replyTo, setReplyTo] = useState<any>(null);
+  const [user, setUser] = useState<any>(null);
   const flatListRef = useRef<FlatList>(null);
+
+  useEffect(() => {
+    const loadUser = async () => {
+      const u = await getUser();
+      setUser(u);
+    };
+    loadUser();
+  }, []);
 
   useEffect(() => {
     if (!room_id) return;
 
-    const setup = async () => {
+    const setupSocket = async () => {
       const token = await getToken();
-      const payload = JSON.parse(atob(token.split(".")[1]));
-      setCurrentUserId(payload.user_id);
-
       await loadMessages(room_id as string);
 
       if (!socket.connected) socket.connect();
@@ -48,7 +53,7 @@ export default function ChatRoomScreen() {
       });
     };
 
-    setup();
+    setupSocket();
 
     const keyboardListener = Keyboard.addListener("keyboardDidShow", () => {
       setTimeout(scrollToBottom, 100);
@@ -86,25 +91,39 @@ export default function ChatRoomScreen() {
   const sendMessage = async () => {
     if (!input.trim()) return;
     const token = await getToken();
-    socket.emit("mobile_send_message", { room_id, content: input.trim(), token });
+    socket.emit("mobile_send_message", {
+      room_id,
+      content: input.trim(),
+      token,
+      reply_to: replyTo?._id || null,
+    });
     setInput("");
+    setReplyTo(null);
   };
 
-  console.log("👤 currentUserId:", currentUserId);
   const renderItem = ({ item }: { item: any }) => {
-    const isMyMessage = currentUserId && String(item.sender_id) === currentUserId;
-    console.log("📨 sender_id:", item.sender_id);
+    const isOwn = item.sender_id === user?.user_id;
     return (
-      <View
-        style={[
-          styles.messageItem,
-          isMyMessage ? styles.myMessage : styles.otherMessage,
-        ]}
-      >
-        <Text style={styles.sender}>{item.sender_name}</Text>
-        <Text>{item.content}</Text>
-        <Text style={styles.timestamp}>{formatTime(item.timestamp)}</Text>
-      </View>
+      <TouchableOpacity onLongPress={() => setReplyTo(item)} activeOpacity={0.7}>
+        <View
+          style={[
+            styles.messageItem,
+            isOwn ? styles.ownMessage : styles.otherMessage,
+          ]}
+        >
+          {item.reply_to && (
+            <View style={styles.replyBox}>
+              <Text style={styles.replySender}>{item.reply_to.sender_name}</Text>
+              <Text style={styles.replySnippet} numberOfLines={1}>
+                {item.reply_to.content}
+              </Text>
+            </View>
+          )}
+          <Text style={styles.sender}>{item.sender_name}</Text>
+          <Text>{item.content}</Text>
+          <Text style={styles.timestamp}>{formatTime(item.timestamp)}</Text>
+        </View>
+      </TouchableOpacity>
     );
   };
 
@@ -138,6 +157,17 @@ export default function ChatRoomScreen() {
               keyboardShouldPersistTaps="handled"
               onContentSizeChange={scrollToBottom}
             />
+
+            {replyTo && (
+              <View style={styles.replyPreview}>
+                <Text style={styles.replyLabel}>Ответ для: {replyTo.sender_name}</Text>
+                <Text style={styles.replyContent} numberOfLines={1}>{replyTo.content}</Text>
+                <TouchableOpacity onPress={() => setReplyTo(null)}>
+                  <Text style={{ color: "red", marginLeft: 8 }}>✕</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
             <View style={styles.inputContainer}>
               <TextInput
                 style={styles.input}
@@ -145,7 +175,6 @@ export default function ChatRoomScreen() {
                 onChangeText={setInput}
                 placeholder="Введите сообщение"
                 multiline
-                textAlignVertical="top"
                 returnKeyType="default"
               />
               <TouchableOpacity onPress={sendMessage} style={styles.sendButton}>
@@ -161,30 +190,23 @@ export default function ChatRoomScreen() {
 
 const styles = StyleSheet.create({
   centered: { flex: 1, justifyContent: "center", alignItems: "center" },
-
   messageItem: {
-    marginBottom: 12,
-    maxWidth: "80%",
+    marginBottom: 16,
     padding: 10,
-    borderRadius: 12,
+    borderRadius: 8,
+    maxWidth: "80%",
   },
-  myMessage: {
+  ownMessage: {
+    backgroundColor: "#d6ebff",
     alignSelf: "flex-end",
-    backgroundColor: "#DCF8C6",
   },
   otherMessage: {
-    alignSelf: "flex-start",
     backgroundColor: "#f2f2f2",
+    alignSelf: "flex-start",
   },
-  messageText: {
-    fontSize: 16,
-  },
-  sender: {
-    fontWeight: "bold",
-    marginBottom: 4,
-  },
+  sender: { fontWeight: "bold", marginBottom: 4 },
   timestamp: {
-    fontSize: 11,
+    fontSize: 12,
     color: "#666",
     marginTop: 6,
     textAlign: "right",
@@ -221,5 +243,40 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 18,
     fontWeight: "bold",
+  },
+  replyPreview: {
+    padding: 8,
+    backgroundColor: "#eee",
+    borderLeftWidth: 4,
+    borderLeftColor: "#007bff",
+    marginHorizontal: 8,
+    marginBottom: 4,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  replyLabel: {
+    fontWeight: "bold",
+    marginRight: 8,
+  },
+  replyContent: {
+    flex: 1,
+    color: "#333",
+  },
+  replyBox: {
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    borderLeftWidth: 2,
+    borderLeftColor: "#aaa",
+    marginBottom: 6,
+  },
+  replySender: {
+    fontSize: 12,
+    fontWeight: "bold",
+    color: "#007bff",
+  },
+  replySnippet: {
+    fontSize: 12,
+    color: "#333",
   },
 });
