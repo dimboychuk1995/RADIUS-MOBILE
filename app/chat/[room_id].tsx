@@ -24,27 +24,30 @@ export default function ChatRoomScreen() {
     if (!room_id) return;
 
     const setupSocket = async () => {
-        const token = await getToken();
+      const token = await getToken();
 
-        await loadMessages(room_id); // 👈 ЗАГРУЖАЕМ СООБЩЕНИЯ ПЕРЕД ПОДКЛЮЧЕНИЕМ
+      await loadMessages(room_id as string); // Загрузка сообщений
 
+      if (!socket.connected) {
         socket.connect();
-        socket.emit("mobile_join", { room_id, token });
+      }
 
-        socket.on("new_message", (msg) => {
+      socket.emit("mobile_join", { room_id, token });
+
+      socket.on("new_message", (msg) => {
         if (msg.room_id === room_id) {
-            setMessages((prev) => [...prev, msg]);
+          setMessages((prev) => [...prev, msg]);
         }
-        });
+      });
     };
 
     setupSocket();
 
     return () => {
-        socket.off("new_message");
-        socket.disconnect();
+      socket.off("new_message");
+      // Убираем disconnect, чтобы не ломать соединение
     };
-    }, [room_id]);
+  }, [room_id]);
 
   const loadMessages = async (roomId: string) => {
     setLoading(true);
@@ -66,13 +69,24 @@ export default function ChatRoomScreen() {
     }
   };
 
-  const sendMessage = () => {
+  const sendMessage = async () => {
     if (!input.trim()) return;
 
-    socket.emit("send_message", {
+    const token = await getToken();
+
+    const payload = {
       room_id,
       content: input.trim(),
-    });
+      token,
+    };
+
+    console.log("📤 Отправка сообщения:", payload);
+
+    if (!socket.connected) {
+      socket.connect();
+    }
+
+    socket.emit("mobile_send_message", payload);
 
     setInput("");
   };
