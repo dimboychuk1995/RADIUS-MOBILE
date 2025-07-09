@@ -37,6 +37,13 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "1888630c-08e1-4ab5-8528-259646bbb501"
+      }
+    },
+    "owner": "holmes_0003"
   }
 }
