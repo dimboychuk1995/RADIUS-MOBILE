@@ -1,5 +1,4 @@
 // ChatRoomScreen.tsx
-
 import { useLocalSearchParams } from "expo-router";
 import { useEffect, useState, useRef } from "react";
 import {
@@ -11,7 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   TextInput,
-  Button,
+  TouchableOpacity,
   Keyboard,
   SafeAreaView,
 } from "react-native";
@@ -39,11 +38,7 @@ export default function ChatRoomScreen() {
       socket.on("new_message", (msg) => {
         if (msg.room_id === room_id) {
           setMessages((prev) => [...prev, msg]);
-
-          // 👇 Скроллим вниз на каждое новое сообщение
-          setTimeout(() => {
-            flatListRef.current?.scrollToEnd({ animated: true });
-          }, 100);
+          setTimeout(scrollToBottom, 100);
         }
       });
     };
@@ -51,7 +46,7 @@ export default function ChatRoomScreen() {
     setupSocket();
 
     const keyboardListener = Keyboard.addListener("keyboardDidShow", () => {
-      setTimeout(scrollToBottom, 50);
+      setTimeout(scrollToBottom, 100);
     });
 
     return () => {
@@ -70,7 +65,7 @@ export default function ChatRoomScreen() {
       const data = await res.json();
       if (data.success) {
         setMessages(data.messages);
-        setTimeout(scrollToBottom, 50);
+        setTimeout(scrollToBottom, 100);
       }
     } catch (err) {
       console.error("❌ Ошибка при загрузке сообщений:", err);
@@ -80,7 +75,7 @@ export default function ChatRoomScreen() {
   };
 
   const scrollToBottom = () => {
-    flatListRef.current?.scrollToOffset({ offset: 999999, animated: false });
+    flatListRef.current?.scrollToOffset({ offset: 999999, animated: true });
   };
 
   const sendMessage = async () => {
@@ -110,8 +105,8 @@ export default function ChatRoomScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={80}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        keyboardVerticalOffset={Platform.select({ ios: 93, android: 0 })}
       >
         {loading ? (
           <View style={styles.centered}>
@@ -126,20 +121,21 @@ export default function ChatRoomScreen() {
               renderItem={renderItem}
               contentContainerStyle={{ padding: 12, paddingBottom: 80 }}
               keyboardShouldPersistTaps="handled"
-              onContentSizeChange={() => {
-                flatListRef.current?.scrollToEnd({ animated: false });
-              }}
+              onContentSizeChange={scrollToBottom}
             />
+
             <View style={styles.inputContainer}>
               <TextInput
                 style={styles.input}
                 value={input}
                 onChangeText={setInput}
                 placeholder="Введите сообщение"
-                onSubmitEditing={sendMessage}
-                returnKeyType="send"
+                multiline
+                returnKeyType="default"
               />
-              <Button title="➤" onPress={sendMessage} />
+              <TouchableOpacity onPress={sendMessage} style={styles.sendButton}>
+                <Text style={styles.sendText}>➤</Text>
+              </TouchableOpacity>
             </View>
           </>
         )}
@@ -169,13 +165,31 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderColor: "#ccc",
     backgroundColor: "#fff",
+    alignItems: "flex-end",
+    paddingBottom: Platform.select({ ios: 16, android: 8 }),
   },
   input: {
     flex: 1,
+    maxHeight: 120,
     borderWidth: 1,
-    borderColor: "#aaa",
-    marginRight: 8,
-    paddingHorizontal: 8,
-    borderRadius: 4,
+    borderColor: "#ccc",
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: "#f9f9f9",
+    fontSize: 16,
+  },
+  sendButton: {
+    marginLeft: 8,
+    backgroundColor: "#007bff",
+    borderRadius: 20,
+    padding: 10,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  sendText: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "bold",
   },
 });
