@@ -1,4 +1,5 @@
 // ChatRoomScreen.tsx
+
 import { useLocalSearchParams } from "expo-router";
 import { useEffect, useState, useRef } from "react";
 import {
@@ -23,13 +24,17 @@ export default function ChatRoomScreen() {
   const [messages, setMessages] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [input, setInput] = useState("");
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const flatListRef = useRef<FlatList>(null);
 
   useEffect(() => {
     if (!room_id) return;
 
-    const setupSocket = async () => {
+    const setup = async () => {
       const token = await getToken();
+      const payload = JSON.parse(atob(token.split(".")[1]));
+      setCurrentUserId(payload.user_id);
+
       await loadMessages(room_id as string);
 
       if (!socket.connected) socket.connect();
@@ -43,7 +48,7 @@ export default function ChatRoomScreen() {
       });
     };
 
-    setupSocket();
+    setup();
 
     const keyboardListener = Keyboard.addListener("keyboardDidShow", () => {
       setTimeout(scrollToBottom, 100);
@@ -85,13 +90,23 @@ export default function ChatRoomScreen() {
     setInput("");
   };
 
-  const renderItem = ({ item }: { item: any }) => (
-    <View style={styles.messageItem}>
-      <Text style={styles.sender}>{item.sender_name}</Text>
-      <Text>{item.content}</Text>
-      <Text style={styles.timestamp}>{formatTime(item.timestamp)}</Text>
-    </View>
-  );
+  console.log("👤 currentUserId:", currentUserId);
+  const renderItem = ({ item }: { item: any }) => {
+    const isMyMessage = currentUserId && String(item.sender_id) === currentUserId;
+    console.log("📨 sender_id:", item.sender_id);
+    return (
+      <View
+        style={[
+          styles.messageItem,
+          isMyMessage ? styles.myMessage : styles.otherMessage,
+        ]}
+      >
+        <Text style={styles.sender}>{item.sender_name}</Text>
+        <Text>{item.content}</Text>
+        <Text style={styles.timestamp}>{formatTime(item.timestamp)}</Text>
+      </View>
+    );
+  };
 
   const formatTime = (ts: string) => {
     try {
@@ -123,7 +138,6 @@ export default function ChatRoomScreen() {
               keyboardShouldPersistTaps="handled"
               onContentSizeChange={scrollToBottom}
             />
-
             <View style={styles.inputContainer}>
               <TextInput
                 style={styles.input}
@@ -131,6 +145,7 @@ export default function ChatRoomScreen() {
                 onChangeText={setInput}
                 placeholder="Введите сообщение"
                 multiline
+                textAlignVertical="top"
                 returnKeyType="default"
               />
               <TouchableOpacity onPress={sendMessage} style={styles.sendButton}>
@@ -146,15 +161,30 @@ export default function ChatRoomScreen() {
 
 const styles = StyleSheet.create({
   centered: { flex: 1, justifyContent: "center", alignItems: "center" },
+
   messageItem: {
-    marginBottom: 16,
+    marginBottom: 12,
+    maxWidth: "80%",
     padding: 10,
-    backgroundColor: "#f2f2f2",
-    borderRadius: 8,
+    borderRadius: 12,
   },
-  sender: { fontWeight: "bold", marginBottom: 4 },
+  myMessage: {
+    alignSelf: "flex-end",
+    backgroundColor: "#DCF8C6",
+  },
+  otherMessage: {
+    alignSelf: "flex-start",
+    backgroundColor: "#f2f2f2",
+  },
+  messageText: {
+    fontSize: 16,
+  },
+  sender: {
+    fontWeight: "bold",
+    marginBottom: 4,
+  },
   timestamp: {
-    fontSize: 12,
+    fontSize: 11,
     color: "#666",
     marginTop: 6,
     textAlign: "right",
