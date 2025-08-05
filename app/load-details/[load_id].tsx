@@ -13,7 +13,7 @@ import {
 import * as ImagePicker from "expo-image-picker";
 import { API_URL } from "@/lib/config";
 import { getUser } from "@/lib/auth";
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from "expo-file-system";
 
 export default function LoadDetailsScreen() {
   const { load_id } = useLocalSearchParams();
@@ -37,8 +37,8 @@ export default function LoadDetailsScreen() {
 
       const res = await fetch(`${API_URL}/api/load/${load_id}`, {
         headers: {
-          "Authorization": `Bearer ${user.token}`
-        }
+          Authorization: `Bearer ${user.token}`,
+        },
       });
       const data = await res.json();
       if (data.success) {
@@ -65,12 +65,16 @@ export default function LoadDetailsScreen() {
       <Text style={styles.text}>🏢 {data.company}</Text>
       <Text style={styles.text}>📍 {data.address}</Text>
       <Text style={styles.text}>📅 {formatDate(data.date)}</Text>
-      {data.instructions ? <Text style={styles.text}>📄 {data.instructions}</Text> : null}
-      {data.contact_phone_number ? <Text style={styles.text}>📞 {data.contact_phone_number}</Text> : null}
+      {data.instructions ? (
+        <Text style={styles.text}>📄 {data.instructions}</Text>
+      ) : null}
+      {data.contact_phone_number ? (
+        <Text style={styles.text}>📞 {data.contact_phone_number}</Text>
+      ) : null}
     </View>
   );
 
-  const pickAndUploadPhotos = async (stage: "pickup" | "delivery") => {
+  const pickAndUploadPhotos = async (stage: string, stopNumber: number) => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsMultipleSelection: true,
@@ -87,12 +91,12 @@ export default function LoadDetailsScreen() {
 
     const formData = new FormData();
     formData.append("stage", stage);
+    formData.append("stop_number", stopNumber.toString());
 
     for (let i = 0; i < result.assets.length; i++) {
       const asset = result.assets[i];
       const fileUri = asset.uri;
       const fileInfo = await FileSystem.getInfoAsync(fileUri);
-
       if (!fileInfo.exists) continue;
 
       const fileName = `photo_${i}.jpg`;
@@ -104,18 +108,18 @@ export default function LoadDetailsScreen() {
     }
 
     try {
+      setUploading(true);
       const res = await fetch(`${API_URL}/api/loads/${load_id}/upload_photos`, {
         method: "POST",
         body: formData,
         headers: {
-          "Authorization": `Bearer ${user.token}`,
-          // ВНИМАНИЕ: НЕ указывать Content-Type, fetch сам добавит boundary
+          Authorization: `Bearer ${user.token}`,
         },
       });
 
       const data = await res.json();
       if (data.success) {
-        Alert.alert("✅ Успех", "Фото загружены");
+        Alert.alert("✅ Успех", `Фото для stop #${stopNumber} загружены`);
         fetchDetails();
       } else {
         Alert.alert("❌ Ошибка", data.error || "Ошибка загрузки");
@@ -123,9 +127,10 @@ export default function LoadDetailsScreen() {
     } catch (err) {
       console.error("❌ Сеть/сервер:", err);
       Alert.alert("❌ Ошибка", "Не удалось загрузить");
+    } finally {
+      setUploading(false);
     }
   };
-
 
   const renderPhotoBlock = (title: string, urls: string[]) => {
     if (!urls || urls.length === 0) return null;
@@ -145,10 +150,26 @@ export default function LoadDetailsScreen() {
     );
   };
 
-  if (loading) return <ActivityIndicator style={{ marginTop: 50 }} size="large" color="#000" />;
-  if (!load) return <Text style={{ marginTop: 50, textAlign: "center" }}>Load not found</Text>;
+  if (loading)
+    return (
+      <ActivityIndicator style={{ marginTop: 50 }} size="large" color="#000" />
+    );
+  if (!load)
+    return <Text style={{ marginTop: 50, textAlign: "center" }}>Load not found</Text>;
 
-  const normalizedStatus = (load.status || "").trim().toLowerCase();
+  const allStops: { stop_number: number; stage: string }[] = [];
+  if (load.pickup?.stop_number != null) {
+    allStops.push({ stop_number: load.pickup.stop_number, stage: "pickup" });
+  }
+  (load.extra_pickup || []).forEach((p: any) => {
+    if (p.stop_number != null) allStops.push({ stop_number: p.stop_number, stage: "extra_pickup" });
+  });
+  if (load.delivery?.stop_number != null) {
+    allStops.push({ stop_number: load.delivery.stop_number, stage: "delivery" });
+  }
+  (load.extra_delivery || []).forEach((d: any) => {
+    if (d.stop_number != null) allStops.push({ stop_number: d.stop_number, stage: "extra_delivery" });
+  });
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -166,19 +187,21 @@ export default function LoadDetailsScreen() {
       {renderLocation("Delivery", load.delivery)}
       {load.extra_delivery?.map((d: any, idx: number) => renderLocation(`Extra Delivery ${idx + 1}`, d))}
 
-      {renderPhotoBlock("📸 Фото с пикапа", load.pickup_photo_urls)}
-      {renderPhotoBlock("📸 Фото на деливери", load.delivery_photo_urls)}
+      {load.stop_photos?.map((block: any, idx: number) => (
+        <View key={`block-${idx}`}>
+          {renderPhotoBlock(`📸 Фото — Stop #${block.stop_number} (${block.stage})`, block.photo_urls)}
+        </View>
+      ))}
 
-      {normalizedStatus === "new" && (
-        <View style={styles.uploadBtn}>
-          <Button title={uploading ? "Загрузка..." : "📤 Добавить фото с пикапа"} onPress={() => pickAndUploadPhotos("pickup")} disabled={uploading} />
+      {allStops.map((stop, idx) => (
+        <View key={`upload-btn-${idx}`} style={styles.uploadBtn}>
+          <Button
+            title={`📤 Добавить фото на Stop #${stop.stop_number} (${stop.stage})`}
+            onPress={() => pickAndUploadPhotos(stop.stage, stop.stop_number)}
+            disabled={uploading}
+          />
         </View>
-      )}
-      {normalizedStatus === "picked_up" && (
-        <View style={styles.uploadBtn}>
-          <Button title={uploading ? "Загрузка..." : "📤 Добавить фото на деливери"} onPress={() => pickAndUploadPhotos("delivery")} disabled={uploading} />
-        </View>
-      )}
+      ))}
     </ScrollView>
   );
 }
@@ -211,7 +234,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   uploadBtn: {
-    marginTop: 20,
+    marginTop: 12,
     backgroundColor: "#fff",
     borderRadius: 10,
     padding: 10,
