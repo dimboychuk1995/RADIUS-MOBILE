@@ -1,5 +1,6 @@
 import { useState } from "react";
 import {
+  ScrollView,
   View,
   Text,
   TextInput,
@@ -24,7 +25,7 @@ export default function AddExpenseScreen() {
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [image, setImage] = useState<ImagePicker.ImagePickerAsset | null>(null);
-  
+
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -76,7 +77,7 @@ export default function AddExpenseScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>➕ Новый чек</Text>
 
       <TouchableOpacity style={styles.imagePicker} onPress={pickImage}>
@@ -128,15 +129,15 @@ export default function AddExpenseScreen() {
       <TouchableOpacity onPress={handleSubmit} style={styles.submitButton}>
         <Text style={styles.submitText}>💾 Сохранить</Text>
       </TouchableOpacity>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     paddingTop: 60,
     paddingHorizontal: 20,
+    paddingBottom: 60,
     backgroundColor: "#fff",
   },
   title: {
