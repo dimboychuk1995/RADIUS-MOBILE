@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from "react-native";
 import { router } from "expo-router";
 import * as Notifications from "expo-notifications";
@@ -7,15 +7,17 @@ import { getUser } from "@/lib/auth";
 import { API_URL } from "@/lib/config";
 
 export default function DashboardScreen() {
+  const [userRole, setUserRole] = useState<string | null>(null);
+
   useEffect(() => {
     const registerPushToken = async () => {
       try {
-
         const user = await getUser();
 
-        if (!user || user.role !== "driver" || !user.driver_id) {
-          return;
-        }
+        if (!user) return;
+        setUserRole(user.role);
+
+        if (user.role !== "driver" || !user.driver_id) return;
 
         const { status } = await Notifications.requestPermissionsAsync();
 
@@ -30,16 +32,14 @@ export default function DashboardScreen() {
 
         const url = `${API_URL}/api/drivers/${user.driver_id}/update_push_token`;
 
-        const res = await fetch(url, {
+        await fetch(url, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${user.token || ""}`,
+            Authorization: `Bearer ${user.token || ""}`,
           },
           body: JSON.stringify({ expo_push_token: token }),
         });
-
-        const text = await res.text();
       } catch (err) {
         console.warn("❌ Ошибка при регистрации push токена:", err);
       }
@@ -47,7 +47,6 @@ export default function DashboardScreen() {
 
     if (Device.isDevice && Platform.OS !== "web") {
       registerPushToken();
-    } else {
     }
   }, []);
 
@@ -66,10 +65,12 @@ export default function DashboardScreen() {
           <Text style={styles.cardText}>Грузы</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.card} onPress={() => router.push("/expenses")}>
-          <Text style={styles.emoji}>🧾</Text>
-          <Text style={styles.cardText}>Добавить инвойс</Text>
-        </TouchableOpacity>
+        {userRole === "driver" && (
+          <TouchableOpacity style={styles.card} onPress={() => router.push("/expenses")}>
+            <Text style={styles.emoji}>🧾</Text>
+            <Text style={styles.cardText}>My expenses</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
