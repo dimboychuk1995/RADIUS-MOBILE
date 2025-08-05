@@ -10,18 +10,14 @@ export default function DashboardScreen() {
   useEffect(() => {
     const registerPushToken = async () => {
       try {
-        console.log("🟡 useEffect: registerPushToken вызван");
 
         const user = await getUser();
-        console.log("👤 Получен user:", user);
 
         if (!user || user.role !== "driver" || !user.driver_id) {
-          console.log("ℹ️ Не водитель или нет driver_id — пропускаем push регистрацию");
           return;
         }
 
         const { status } = await Notifications.requestPermissionsAsync();
-        console.log("🔐 Push permission status:", status);
 
         if (status !== "granted") {
           console.warn("❌ Push разрешение не выдано");
@@ -31,10 +27,8 @@ export default function DashboardScreen() {
         const { data: token } = await Notifications.getExpoPushTokenAsync({
           projectId: "1888630c-08e1-4ab5-8528-259646bbb501"
         });
-        console.log("📱 Получен Push token:", token);
 
         const url = `${API_URL}/api/drivers/${user.driver_id}/update_push_token`;
-        console.log("🌐 Отправляем токен на:", url);
 
         const res = await fetch(url, {
           method: "POST",
@@ -46,7 +40,6 @@ export default function DashboardScreen() {
         });
 
         const text = await res.text();
-        console.log("📬 Ответ сервера:", text);
       } catch (err) {
         console.warn("❌ Ошибка при регистрации push токена:", err);
       }
@@ -55,7 +48,6 @@ export default function DashboardScreen() {
     if (Device.isDevice && Platform.OS !== "web") {
       registerPushToken();
     } else {
-      console.log("⚠️ Не устройство или web — push не регистрируется");
     }
   }, []);
 
