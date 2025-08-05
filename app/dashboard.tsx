@@ -4,7 +4,7 @@ import { router } from "expo-router";
 import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
 import { getUser } from "@/lib/auth";
-import { API_URL } from "@/lib/config"; // убедись, что указывает на твой бекенд
+import { API_URL } from "@/lib/config";
 
 export default function DashboardScreen() {
   useEffect(() => {
@@ -40,7 +40,7 @@ export default function DashboardScreen() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${user.token || ""}`, // если используешь JWT
+            "Authorization": `Bearer ${user.token || ""}`,
           },
           body: JSON.stringify({ expo_push_token: token }),
         });
@@ -72,6 +72,11 @@ export default function DashboardScreen() {
         <TouchableOpacity style={styles.card} onPress={() => router.push("/loads")}>
           <Text style={styles.emoji}>🚛</Text>
           <Text style={styles.cardText}>Грузы</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.card} onPress={() => router.push("/expenses")}>
+          <Text style={styles.emoji}>🧾</Text>
+          <Text style={styles.cardText}>Добавить инвойс</Text>
         </TouchableOpacity>
       </View>
     </View>
