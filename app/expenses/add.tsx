@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   ScrollView,
   View,
@@ -15,6 +15,7 @@ import * as ImagePicker from "expo-image-picker";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { getUser } from "@/lib/auth";
 import { API_URL } from "@/lib/config";
+import RNPickerSelect from "react-native-picker-select";
 
 export default function AddExpenseScreen() {
   const router = useRouter();
@@ -25,6 +26,8 @@ export default function AddExpenseScreen() {
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [image, setImage] = useState<ImagePicker.ImagePickerAsset | null>(null);
+
+  const pickerRef = useRef<any>(null);
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -96,12 +99,26 @@ export default function AddExpenseScreen() {
         style={styles.input}
       />
 
-      <TextInput
-        placeholder="Категория (fuel, toll, repair, food, other)"
-        value={category}
-        onChangeText={setCategory}
-        style={styles.input}
-      />
+      <TouchableOpacity
+        activeOpacity={1}
+        onPress={() => pickerRef.current?.togglePicker(true)}
+      >
+        <RNPickerSelect
+          ref={pickerRef}
+          onValueChange={setCategory}
+          value={category}
+          placeholder={{ label: "Выберите категорию", value: null }}
+          items={[
+            { label: "⛽ Fuel", value: "fuel" },
+            { label: "🛣️ Toll", value: "toll" },
+            { label: "🔧 Repair", value: "repair" },
+            { label: "🍔 Food", value: "food" },
+            { label: "📄 Other", value: "other" },
+          ]}
+          useNativeAndroidPickerStyle={false}
+          style={pickerSelectStyles}
+        />
+      </TouchableOpacity>
 
       <TextInput
         placeholder="Комментарий"
@@ -116,15 +133,16 @@ export default function AddExpenseScreen() {
 
       {showDatePicker && (
         <DateTimePicker
-          mode="date"
-          display={Platform.OS === "ios" ? "inline" : "default"}
-          value={date}
-          onChange={(_, selectedDate) => {
+            mode="date"
+            display={Platform.OS === "ios" ? "inline" : "default"}
+            value={date}
+            maximumDate={new Date()} // ✅ Ограничение до сегодняшнего дня
+            onChange={(_, selectedDate) => {
             setShowDatePicker(false);
             if (selectedDate) setDate(selectedDate);
-          }}
+            }}
         />
-      )}
+        )}
 
       <TouchableOpacity onPress={handleSubmit} style={styles.submitButton}>
         <Text style={styles.submitText}>💾 Сохранить</Text>
@@ -181,5 +199,23 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "600",
+  },
+});
+
+const pickerSelectStyles = StyleSheet.create({
+  inputIOS: {
+    backgroundColor: "#f4f6f9",
+    padding: 14,
+    borderRadius: 8,
+    fontSize: 16,
+    marginBottom: 16,
+  },
+  inputAndroid: {
+    backgroundColor: "#f4f6f9",
+    padding: 14,
+    borderRadius: 8,
+    fontSize: 16,
+    marginBottom: 16,
+    color: "#000",
   },
 });
