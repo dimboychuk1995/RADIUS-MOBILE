@@ -7,23 +7,64 @@ import {
   StyleSheet,
   TouchableOpacity,
   Image,
+  Platform,
+  Modal,
+  Alert,
 } from "react-native";
+import { useRouter } from "expo-router";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import * as ImagePicker from "expo-image-picker";
-import { TimePickerModal } from "../tools/time_picker";
+
+// Компонент модального TimePicker-а
+function TimePickerModal({ visible, initialTime, onConfirm, onCancel }: {
+  visible: boolean;
+  initialTime: Date;
+  onConfirm: (d: Date) => void;
+  onCancel: () => void;
+}) {
+  const [tempTime, setTempTime] = useState(initialTime);
+
+  return (
+    <Modal visible={visible} transparent animationType="slide">
+      <View style={modalStyles.overlay}>
+        <View style={modalStyles.container}>
+          <DateTimePicker
+            value={tempTime}
+            mode="time"
+            display={Platform.OS === "ios" ? "spinner" : "default"}
+            onChange={(_, selectedTime) => {
+              if (selectedTime) setTempTime(selectedTime);
+            }}
+          />
+          <TouchableOpacity
+            onPress={() => onConfirm(tempTime)}
+            style={modalStyles.confirmButton}
+          >
+            <Text style={modalStyles.confirmText}>Confirm</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={onCancel}>
+            <Text style={modalStyles.cancelText}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+}
 
 export default function AddInspectionScreen() {
+  const router = useRouter();
+
+  const [photo, setPhoto] = useState<ImagePicker.ImagePickerAsset | null>(null);
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   const [timeFrom, setTimeFrom] = useState(new Date());
-  const [showTimeFromPicker, setShowTimeFromPicker] = useState(false);
+  const [showTimeFrom, setShowTimeFrom] = useState(false);
 
   const [timeTo, setTimeTo] = useState(new Date());
-  const [showTimeToPicker, setShowTimeToPicker] = useState(false);
+  const [showTimeTo, setShowTimeTo] = useState(false);
 
   const [stateText, setStateText] = useState("");
-  const [photo, setPhoto] = useState<any>(null);
 
   const pickPhoto = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -39,30 +80,33 @@ export default function AddInspectionScreen() {
   const formatTime = (d: Date) =>
     d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
+  const handleSubmit = () => {
+    Alert.alert("Успешно", "Инспекция сохранена");
+    router.replace("/inspections");
+  };
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>🛡️ Add DOT Inspection</Text>
+      <Text style={styles.title}>➕ Add DOT Inspection</Text>
 
       <TouchableOpacity style={styles.imagePicker} onPress={pickPhoto}>
         {photo ? (
           <Image source={{ uri: photo.uri }} style={styles.imagePreview} />
         ) : (
-          <Text style={styles.imageText}>📷 Загрузить фото</Text>
+          <Text style={styles.imageText}>📷 Upload Photo</Text>
         )}
       </TouchableOpacity>
 
       <Text style={styles.label}>Date</Text>
-      <TouchableOpacity
-        style={styles.input}
-        onPress={() => setShowDatePicker(true)}
-      >
+      <TouchableOpacity onPress={() => setShowDatePicker(true)} style={styles.input}>
         <Text>{date.toLocaleDateString()}</Text>
       </TouchableOpacity>
+
       {showDatePicker && (
         <DateTimePicker
-          value={date}
           mode="date"
-          display="default"
+          display={Platform.OS === "ios" ? "inline" : "default"}
+          value={date}
           maximumDate={new Date()}
           onChange={(_, selectedDate) => {
             setShowDatePicker(false);
@@ -72,48 +116,47 @@ export default function AddInspectionScreen() {
       )}
 
       <Text style={styles.label}>Time From</Text>
-      <TouchableOpacity
-        style={styles.input}
-        onPress={() => setShowTimeFromPicker(true)}
-      >
+      <TouchableOpacity onPress={() => setShowTimeFrom(true)} style={styles.input}>
         <Text>{formatTime(timeFrom)}</Text>
       </TouchableOpacity>
 
       <Text style={styles.label}>Time To</Text>
-      <TouchableOpacity
-        style={styles.input}
-        onPress={() => setShowTimeToPicker(true)}
-      >
+      <TouchableOpacity onPress={() => setShowTimeTo(true)} style={styles.input}>
         <Text>{formatTime(timeTo)}</Text>
       </TouchableOpacity>
 
       <Text style={styles.label}>State</Text>
       <TextInput
-        style={styles.input}
         placeholder="e.g. IL"
         value={stateText}
         onChangeText={setStateText}
+        style={styles.input}
         autoCapitalize="characters"
       />
 
-      {/* Time Pickers */}
+      <TouchableOpacity onPress={handleSubmit} style={styles.submitButton}>
+        <Text style={styles.submitText}>💾 Save</Text>
+      </TouchableOpacity>
+
+      {/* Модалки */}
       <TimePickerModal
-        visible={showTimeFromPicker}
+        visible={showTimeFrom}
         initialTime={timeFrom}
-        onConfirm={(newTime) => {
-          setTimeFrom(newTime);
-          setShowTimeFromPicker(false);
+        onConfirm={(t) => {
+          setTimeFrom(t);
+          setShowTimeFrom(false);
         }}
-        onCancel={() => setShowTimeFromPicker(false)}
+        onCancel={() => setShowTimeFrom(false)}
       />
+
       <TimePickerModal
-        visible={showTimeToPicker}
+        visible={showTimeTo}
         initialTime={timeTo}
-        onConfirm={(newTime) => {
-          setTimeTo(newTime);
-          setShowTimeToPicker(false);
+        onConfirm={(t) => {
+          setTimeTo(t);
+          setShowTimeTo(false);
         }}
-        onCancel={() => setShowTimeToPicker(false)}
+        onCancel={() => setShowTimeTo(false)}
       />
     </ScrollView>
   );
@@ -121,15 +164,15 @@ export default function AddInspectionScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    padding: 20,
+    paddingTop: 60,
+    paddingHorizontal: 20,
+    paddingBottom: 60,
     backgroundColor: "#fff",
-    flexGrow: 1,
   },
   title: {
     fontSize: 24,
     fontWeight: "bold",
-    marginBottom: 24,
-    textAlign: "center",
+    marginBottom: 20,
   },
   label: {
     fontSize: 16,
@@ -159,5 +202,50 @@ const styles = StyleSheet.create({
     height: "100%",
     borderRadius: 8,
     resizeMode: "cover",
+  },
+  submitButton: {
+    backgroundColor: "#007AFF",
+    paddingVertical: 14,
+    borderRadius: 8,
+    marginTop: 30,
+    alignItems: "center",
+  },
+  submitText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+});
+
+const modalStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: "#00000066",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  container: {
+    backgroundColor: "#fff",
+    padding: 20,
+    borderRadius: 12,
+    width: "80%",
+    alignItems: "center",
+  },
+  confirmButton: {
+    backgroundColor: "#007AFF",
+    paddingVertical: 10,
+    paddingHorizontal: 30,
+    borderRadius: 8,
+    marginTop: 10,
+  },
+  confirmText: {
+    color: "#fff",
+    fontWeight: "600",
+    fontSize: 16,
+  },
+  cancelText: {
+    color: "#999",
+    marginTop: 10,
+    fontSize: 14,
   },
 });
