@@ -6,11 +6,8 @@ export default function InspectionsScreen() {
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity
-        style={styles.button}
-        onPress={() => router.push("/inspections/add_inspection")}
-      >
-        <Text style={styles.buttonText}>➕ Add DOT Inspection</Text>
+      <TouchableOpacity style={styles.addButton} onPress={() => router.push("/inspections/add_inspection")}>
+        <Text style={styles.addButtonText}>➕ Add DOT Inspection</Text>
       </TouchableOpacity>
     </View>
   );
@@ -20,20 +17,20 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f4f6f9",
-    padding: 20,
-    justifyContent: "center",
-    alignItems: "center",
+    paddingTop: 60,
+    paddingHorizontal: 20,
   },
-  button: {
-    backgroundColor: "#007bff",
-    paddingVertical: 16,
-    paddingHorizontal: 30,
-    borderRadius: 12,
-    elevation: 3,
+  addButton: {
+    backgroundColor: "#007AFF",
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    alignSelf: "flex-start",
+    marginBottom: 20,
   },
-  buttonText: {
+  addButtonText: {
     color: "#fff",
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "600",
   },
 });
