@@ -14,6 +14,8 @@ import {
 import { useRouter } from "expo-router";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import * as ImagePicker from "expo-image-picker";
+import { getUser } from "@/lib/auth";
+import { API_URL } from "@/lib/config";
 
 // Компонент модального TimePicker-а
 function TimePickerModal({ visible, initialTime, onConfirm, onCancel }: {
@@ -80,10 +82,49 @@ export default function AddInspectionScreen() {
   const formatTime = (d: Date) =>
     d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
-  const handleSubmit = () => {
-    Alert.alert("Успешно", "Инспекция сохранена");
-    router.replace("/inspections");
-  };
+    const handleSubmit = async () => {
+        try {
+            const user = await getUser();
+            if (!user?.token) throw new Error("Not authorized");
+
+            const formData = new FormData();
+
+            if (photo) {
+            formData.append("file", {
+                uri: photo.uri,
+                name: "inspection.jpg",
+                type: "image/jpeg",
+            } as any);
+            }
+
+            formData.append("date", date.toISOString().split("T")[0]); // YYYY-MM-DD
+            formData.append("start_time", timeFrom.toTimeString().slice(0, 5)); // HH:MM
+            formData.append("end_time", timeTo.toTimeString().slice(0, 5));
+            formData.append("state", stateText.trim());
+            formData.append("clean_inspection", "true");
+            formData.append("address", ""); // опционально
+            formData.append("violations", JSON.stringify([])); // можно пустой массив
+
+            const res = await fetch(`${API_URL}/api/mobile/inspections`, {
+            method: "POST",
+            headers: {
+                Authorization: `Bearer ${user.token}`,
+                // Не указываем Content-Type! Его задаст сам fetch с boundary
+            },
+            body: formData,
+            });
+
+            if (!res.ok) {
+            const text = await res.text();
+            throw new Error(`Submit error: ${text}`);
+            }
+
+            Alert.alert("✅ Успешно", "Инспекция сохранена");
+            router.replace("/inspections");
+        } catch (err: any) {
+            Alert.alert("❌ Ошибка", err.message || "Ошибка при сохранении");
+        }
+        };
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
