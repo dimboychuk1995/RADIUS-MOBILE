@@ -52,7 +52,7 @@ export default function DashboardScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>📋 Главное меню</Text>
+      <Text style={styles.title}> UWC Driver App</Text>
 
       <View style={styles.cardContainer}>
         <TouchableOpacity style={styles.card} onPress={() => router.push("/chat")}>
@@ -71,6 +71,12 @@ export default function DashboardScreen() {
             <Text style={styles.cardText}>My expenses</Text>
           </TouchableOpacity>
         )}
+
+        <TouchableOpacity style={styles.card} onPress={() => router.push("/inspections")}>
+          <Text style={styles.emoji}>🛡️</Text>
+          <Text style={styles.cardText}>Add DOT Inspection</Text>
+        </TouchableOpacity>
+
       </View>
     </View>
   );
