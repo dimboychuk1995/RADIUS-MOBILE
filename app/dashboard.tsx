@@ -1,53 +1,32 @@
 import { useEffect, useState } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Platform } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { router } from "expo-router";
-import * as Notifications from "expo-notifications";
-import * as Device from "expo-device";
 import { getUser } from "@/lib/auth";
-import { API_URL } from "@/lib/config";
+import { initLoadNotifications } from "@/app/tools/notification/load_notifications";
 
 export default function DashboardScreen() {
   const [userRole, setUserRole] = useState<string | null>(null);
 
   useEffect(() => {
-    const registerPushToken = async () => {
-      try {
-        const user = await getUser();
+    // подтягиваем пользователя для UI
+    (async () => {
+      const user = await getUser();
+      if (user) setUserRole(user.role);
+    })();
 
-        if (!user) return;
-        setUserRole(user.role);
+    // инициализируем пуш-уведомления (регистрация токена + слушатели)
+    let unsub: (() => void) | undefined;
+    (async () => {
+      unsub = await initLoadNotifications((loadId) => {
+        // Переход на детали груза по тапу на пуш
+        // Подставь свой реальный маршрут:
+        router.push(`/load-details/${encodeURIComponent(loadId)}`);
+      });
+    })();
 
-        if (user.role !== "driver" || !user.driver_id) return;
-
-        const { status } = await Notifications.requestPermissionsAsync();
-
-        if (status !== "granted") {
-          console.warn("❌ Push разрешение не выдано");
-          return;
-        }
-
-        const { data: token } = await Notifications.getExpoPushTokenAsync({
-          projectId: "1888630c-08e1-4ab5-8528-259646bbb501"
-        });
-
-        const url = `${API_URL}/api/drivers/${user.driver_id}/update_push_token`;
-
-        await fetch(url, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${user.token || ""}`,
-          },
-          body: JSON.stringify({ expo_push_token: token }),
-        });
-      } catch (err) {
-        console.warn("❌ Ошибка при регистрации push токена:", err);
-      }
+    return () => {
+      if (unsub) unsub();
     };
-
-    if (Device.isDevice && Platform.OS !== "web") {
-      registerPushToken();
-    }
   }, []);
 
   return (
@@ -72,7 +51,6 @@ export default function DashboardScreen() {
               <Text style={styles.cardText}>My expenses</Text>
             </TouchableOpacity>
 
-            {/* NEW: Statements */}
             <TouchableOpacity style={styles.card} onPress={() => router.push("/statements")}>
               <Text style={styles.emoji}>📑</Text>
               <Text style={styles.cardText}>Statements</Text>
@@ -84,7 +62,6 @@ export default function DashboardScreen() {
           <Text style={styles.emoji}>🛡️</Text>
           <Text style={styles.cardText}>Add DOT Inspection</Text>
         </TouchableOpacity>
-
       </View>
     </View>
   );
