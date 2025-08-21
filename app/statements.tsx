@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { API_URL } from "@/lib/config";
 import { getUser } from "@/lib/auth";
+import { router } from "expo-router";
 
 type StatementItem = {
   id: string;
@@ -82,6 +83,10 @@ export default function StatementsScreen() {
     setRefreshing(false);
   }, [fetchData]);
 
+  const openDetails = (id: string) => {
+    router.push(`/statements/statements_details?id=${encodeURIComponent(id)}`);
+  };
+
   const renderItem = ({ item }: { item: StatementItem }) => {
     const badgeStyleApproved = [
       styles.badge,
@@ -102,7 +107,7 @@ export default function StatementsScreen() {
     ];
 
     return (
-      <TouchableOpacity activeOpacity={0.85} style={styles.card}>
+      <TouchableOpacity activeOpacity={0.85} style={styles.card} onPress={() => openDetails(item.id)}>
         <View style={styles.cardHeader}>
           <Text style={styles.weekRange}>{item.week_range || "—"}</Text>
           <Text style={styles.salary}>${(item.salary ?? 0).toFixed(2)}</Text>
