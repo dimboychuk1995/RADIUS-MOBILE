@@ -66,10 +66,18 @@ export default function DashboardScreen() {
         </TouchableOpacity>
 
         {userRole === "driver" && (
-          <TouchableOpacity style={styles.card} onPress={() => router.push("/expenses")}>
-            <Text style={styles.emoji}>🧾</Text>
-            <Text style={styles.cardText}>My expenses</Text>
-          </TouchableOpacity>
+          <>
+            <TouchableOpacity style={styles.card} onPress={() => router.push("/expenses")}>
+              <Text style={styles.emoji}>🧾</Text>
+              <Text style={styles.cardText}>My expenses</Text>
+            </TouchableOpacity>
+
+            {/* NEW: Statements */}
+            <TouchableOpacity style={styles.card} onPress={() => router.push("/statements")}>
+              <Text style={styles.emoji}>📑</Text>
+              <Text style={styles.cardText}>Statements</Text>
+            </TouchableOpacity>
+          </>
         )}
 
         <TouchableOpacity style={styles.card} onPress={() => router.push("/inspections")}>

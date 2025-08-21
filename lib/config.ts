@@ -3,4 +3,4 @@
 export const API_URL =
   typeof window !== "undefined" && window.location.hostname === "localhost"
     ? "http://192.168.0.229:5000"
-    : "https://8deb801793ec.ngrok-free.app";
+    : "https://f71a3d6c1eba.ngrok-free.app";
