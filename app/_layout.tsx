@@ -6,6 +6,8 @@ import Modal from "react-native-modal";
 import { usePathname, useRouter } from "expo-router";
 import { useAuthGuard } from "@/lib/guard";
 import { clearUser } from "@/lib/auth";
+import { API_URL } from "@/lib/config";
+import { getUser } from "@/lib/auth";
 
 export default function RootLayout() {
   const router = useRouter();
@@ -24,8 +26,21 @@ export default function RootLayout() {
 
   const handleLogout = async () => {
     setModalVisible(false);
-    await clearUser();
-    router.replace("/login");
+    try {
+      const user = await getUser();
+      if (user?.role === "driver" && user?.driver_id && user?.token) {
+        await fetch(`${API_URL}/api/drivers/${user.driver_id}/clear_push_token`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${user.token}`,
+          },
+        }).catch(() => {});
+      }
+    } finally {
+      await clearUser();
+      router.replace("/login");
+    }
   };
 
   if (isAuthenticated === null) return null;
