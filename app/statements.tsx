@@ -49,7 +49,7 @@ export default function StatementsScreen() {
         return;
       }
 
-      const url = `${API_URL}/api/mobile/statements/driver_last5?driver_id=${encodeURIComponent(
+      const url = `${API_URL}/api/mobile/statements?driver_id=${encodeURIComponent(
         user.driver_id
       )}`;
 
