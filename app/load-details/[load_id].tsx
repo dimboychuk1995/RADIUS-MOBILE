@@ -15,6 +15,11 @@ import { API_URL } from "@/lib/config";
 import { getUser } from "@/lib/auth";
 import * as FileSystem from "expo-file-system";
 
+function isMongoId(v: string | string[] | undefined): v is string {
+  if (!v || Array.isArray(v)) return false;
+  return /^[0-9a-fA-F]{24}$/.test(v);
+}
+
 export default function LoadDetailsScreen() {
   const { load_id } = useLocalSearchParams();
   const [load, setLoad] = useState<any>(null);
@@ -35,10 +40,17 @@ export default function LoadDetailsScreen() {
         return;
       }
 
-      const res = await fetch(`${API_URL}/api/load/${load_id}`, {
-        headers: {
-          Authorization: `Bearer ${user.token}`,
-        },
+      let url: string;
+      if (isMongoId(load_id)) {
+        // Пуш прислал Mongo _id → отдельный эндпоинт по _id
+        url = `${API_URL}/api/load/by_id/${load_id}`;
+      } else {
+        // Обычный сценарий: business load_id
+        url = `${API_URL}/api/load/${load_id}`;
+      }
+
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${user.token}` },
       });
       const data = await res.json();
       if (data.success) {
@@ -65,12 +77,8 @@ export default function LoadDetailsScreen() {
       <Text style={styles.text}>🏢 {data.company}</Text>
       <Text style={styles.text}>📍 {data.address}</Text>
       <Text style={styles.text}>📅 {formatDate(data.date)}</Text>
-      {data.instructions ? (
-        <Text style={styles.text}>📄 {data.instructions}</Text>
-      ) : null}
-      {data.contact_phone_number ? (
-        <Text style={styles.text}>📞 {data.contact_phone_number}</Text>
-      ) : null}
+      {data.instructions ? <Text style={styles.text}>📄 {data.instructions}</Text> : null}
+      {data.contact_phone_number ? <Text style={styles.text}>📞 {data.contact_phone_number}</Text> : null}
     </View>
   );
 
@@ -112,9 +120,7 @@ export default function LoadDetailsScreen() {
       const res = await fetch(`${API_URL}/api/loads/${load_id}/upload_photos`, {
         method: "POST",
         body: formData,
-        headers: {
-          Authorization: `Bearer ${user.token}`,
-        },
+        headers: { Authorization: `Bearer ${user.token}` },
       });
 
       const data = await res.json();
@@ -139,23 +145,15 @@ export default function LoadDetailsScreen() {
         <Text style={styles.sectionTitle}>{title}</Text>
         <ScrollView horizontal>
           {urls.map((url, idx) => (
-            <Image
-              key={idx}
-              source={{ uri: API_URL + url }}
-              style={styles.photo}
-            />
+            <Image key={idx} source={{ uri: API_URL + url }} style={styles.photo} />
           ))}
         </ScrollView>
       </View>
     );
   };
 
-  if (loading)
-    return (
-      <ActivityIndicator style={{ marginTop: 50 }} size="large" color="#000" />
-    );
-  if (!load)
-    return <Text style={{ marginTop: 50, textAlign: "center" }}>Load not found</Text>;
+  if (loading) return <ActivityIndicator style={{ marginTop: 50 }} size="large" color="#000" />;
+  if (!load) return <Text style={{ marginTop: 50, textAlign: "center" }}>Load not found</Text>;
 
   const allStops: { stop_number: number; stage: string }[] = [];
   if (load.pickup?.stop_number != null) {
