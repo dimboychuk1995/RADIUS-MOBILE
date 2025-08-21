@@ -2,7 +2,10 @@ import { useEffect, useState } from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { router } from "expo-router";
 import { getUser } from "@/lib/auth";
+
+// ПРИЁМ PUSH: грузы + стейтменты
 import { initLoadNotifications } from "@/app/tools/notification/load_notifications";
+import { initStatementNotifications } from "@/app/tools/notification/statement_notifications";
 
 export default function DashboardScreen() {
   const [userRole, setUserRole] = useState<string | null>(null);
@@ -15,17 +18,34 @@ export default function DashboardScreen() {
     })();
 
     // инициализируем пуш-уведомления (регистрация токена + слушатели)
-    let unsub: (() => void) | undefined;
+    let unsubLoads: undefined | (() => void);
+    let unsubStatements: undefined | (() => void);
+
     (async () => {
-      unsub = await initLoadNotifications((loadId) => {
-        // Переход на детали груза по тапу на пуш
-        // Подставь свой реальный маршрут:
+      // ГРУЗЫ → детальная
+      unsubLoads = await initLoadNotifications((loadId) => {
+        if (!loadId) return;
         router.push(`/load-details/${encodeURIComponent(loadId)}`);
+      });
+
+      // СТЕЙТМЕНТЫ → список с якорями (open / week)
+      unsubStatements = await initStatementNotifications((statementId, weekRange) => {
+        if (statementId) {
+          const query = `open=${encodeURIComponent(statementId)}${
+            weekRange ? `&week=${encodeURIComponent(weekRange)}` : ""
+          }`;
+          router.push(`/statements?${query}`);
+        } else if (weekRange) {
+          router.push(`/statements?week=${encodeURIComponent(weekRange)}`);
+        } else {
+          router.push(`/statements`);
+        }
       });
     })();
 
     return () => {
-      if (unsub) unsub();
+      if (unsubLoads) unsubLoads();
+      if (unsubStatements) unsubStatements();
     };
   }, []);
 
